@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spreadsheet</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      overflow: auto;
+      max-height: 80vh;
+      display: block;
+    }
+
+    td {
+      border: 1px solid #ccc;
+      height: 40px;
+      min-width: 140px;
+      max-width: 140px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .active {
+      border: 2px solid blue;
+    }
+
+    th {
+      width: 30px;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    td:hover {
+      background-color: #e9ecef;
+    }
+
+    input {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+
+    .active {
+      border: 2px solid #007bff;
+    }
+  </style>
+</head>
+
+<body>
+  <input type="text" id="inputField" disabled />
+
+  <table id="spreadsheet">
+    <thead>
+      <tr>
+        <th></th>
+        <script>
+          for (let j = 0; j < 255; j++) {
+            let columnLabel = '';
+            let temp = j;
+            while (temp >= 0) {
+              columnLabel = String.fromCharCode((temp % 26) + 65) + columnLabel;
+              temp = Math.floor(temp / 26) - 1;
+            }
+            document.write('<th>' + columnLabel + '</th>');
+          }
+        </script>
+      </tr>
+    </thead>
+    <tbody>
+      <script>
+        for (let i = 0; i < 255; i++) {
+          document.write('<tr>');
+          document.write('<th>' + (parseInt(i) + 1) + '</th>'); // 行番号
+          for (let j = 0; j < 255; j++) {
+            document.write('<td data-row="' + i + '" data-col="' + j + '"></td>');
+          }
+          document.write('</tr>');
+        }
+      </script>
+    </tbody>
+  </table>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:3000");
+
+    const cells = document.querySelectorAll('td');
+    const inputField = document.getElementById('inputField');
+    let currentCell = null;
+
+    cells.forEach(cell => {
+      cell.addEventListener('click', (event) => {
+        if (currentCell) {
+          currentCell.classList.remove('active');
+        }
+        currentCell = cell;
+        inputField.value = cell.textContent;
+        inputField.disabled = false;
+        inputField.style.display = 'block';
+        inputField.focus();
+        currentCell.classList.add('active');
+
+        // クリックされた位置を取得
+        const row = cell.getAttribute('data-row');
+        const col = cell.getAttribute('data-col');
+      });
+    });
+
+    inputField.addEventListener('input', () => {
+      if (currentCell) {
+        currentCell.textContent = inputField.value;
+      }
+    });
+
+    inputField.addEventListener('blur', saveValue);
+    inputField.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        saveValue();
+      }
+    });
+
+    function saveValue() {
+      if (currentCell) {
+        const row = currentCell.getAttribute('data-row');
+        const col = currentCell.getAttribute('data-col');
+        const value = inputField.value;
+
+        ws.send(JSON.stringify({
+          x: col,
+          y: row,
+          in: value
+        }))
+
+
+        currentCell.classList.remove('active');
+        currentCell = null;
+      }
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('td') && currentCell) {
+        inputField.style.display = 'none';
+        inputField.disabled = true;
+        currentCell.classList.remove('active');
+        currentCell = null;
+      }
+    });
+
+    ws.onmessage = (evnet) => {
+      const data = JSON.parse(event.data);
+      const cell = document.querySelector(`[data-row="${data.y}"][data-col="${data.x}"]`);
+      cell.textContent = data.out;
+    }
+  </script>
+</body>
+
+</html>

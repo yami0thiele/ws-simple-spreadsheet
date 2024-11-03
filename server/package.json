@@ -1,0 +1,16 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "module": "index.ts",
+  "type": "module",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "^1.1.13"
+  },
+  "dependencies": {
+    "typescript": "^5.6.3"
+  },
+  "scripts": {
+    "start": "bun run index.ts"
+  }
+}
